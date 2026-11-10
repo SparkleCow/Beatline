@@ -10,8 +10,8 @@ signal player_hit(lane: int, kind: int)
 
 ## Beats extra que se generan por delante de lo visible.
 const GENERATION_MARGIN_BEATS: float = 8.0
-const WALL_COLOR: Color = Color(0.55, 0.55, 0.58)
-const LOW_COLOR: Color = Color(0.75, 0.75, 0.78)
+## Beats por compás para elegir el color neón de cada fila.
+const COLOR_BEATS_PER_BAR: float = 4.0
 
 var pattern: LevelPattern
 
@@ -29,8 +29,9 @@ var _player_size: Vector3 = Vector3.ONE
 var _hit_emitted: bool = false
 var _wall_mesh: BoxMesh
 var _low_mesh: BoxMesh
-var _wall_material: StandardMaterial3D
-var _low_material: StandardMaterial3D
+## Un material por color de la paleta (compartidos por todo el pool).
+var _wall_materials: Array[ShaderMaterial] = []
+var _low_materials: Array[ShaderMaterial] = []
 
 
 func setup(game: GameConfig, difficulty: DifficultyConfig, level_seed: int, bpm: float) -> void:
@@ -106,9 +107,10 @@ func _spawn_row(row: LevelPattern.Row) -> void:
 			continue
 		var obstacle: Obstacle = _take_from_pool()
 		var is_low: bool = kind == LevelPattern.Kind.LOW
+		var color_index: int = posmod(floori(row.beat / COLOR_BEATS_PER_BAR), _wall_materials.size())
 		obstacle.activate(lane, kind, row.time, _game.low_size if is_low else _game.wall_size,
 				_game.lane_x(lane), _low_mesh if is_low else _wall_mesh,
-				_low_material if is_low else _wall_material)
+				_low_materials[color_index] if is_low else _wall_materials[color_index])
 		obstacle.position.z = -_game.view_distance
 		_active.append(obstacle)
 
@@ -143,12 +145,6 @@ func _build_shared_resources() -> void:
 	_wall_mesh.size = _game.wall_size
 	_low_mesh = BoxMesh.new()
 	_low_mesh.size = _game.low_size
-	_wall_material = _make_material(WALL_COLOR)
-	_low_material = _make_material(LOW_COLOR)
-
-
-static func _make_material(color: Color) -> StandardMaterial3D:
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = color
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_PER_VERTEX
-	return mat
+	for color: Color in NeonPalette.COLORS:
+		_wall_materials.append(NeonPalette.edges_material(color, _game.wall_size))
+		_low_materials.append(NeonPalette.edges_material(color, _game.low_size, true))

@@ -18,6 +18,13 @@ const MSEC_PER_SEC: float = 1000.0
 const DEFAULT_GAME_CONFIG: String = "res://resources/game_config.tres"
 const DEFAULT_MUSIC_CONFIG: String = "res://resources/music_config.tres"
 const DEFAULT_DIFFICULTY_CONFIG: String = "res://resources/difficulty_config.tres"
+const SKY_SHADER: Shader = preload("res://assets/shaders/y2k_sky.gdshader")
+## El fondo va justo antes del plano lejano, para no tapar obstáculos.
+const SKY_DISTANCE_MARGIN: float = 2.0
+## Sobredimensión del fondo para cubrir cualquier aspecto y el golpe de FOV.
+const SKY_OVERSCAN: float = 1.4
+## Alto/ancho del fondo (vertical 9:16 con margen).
+const SKY_ASPECT: float = 2.0
 
 @export var game_config: GameConfig
 @export var music_config: MusicConfig
@@ -39,6 +46,7 @@ var _speed: float = 14.0
 @onready var _spawner: ObstacleSpawner = $ObstacleSpawner
 @onready var _player: PlayerController = $Player
 @onready var _camera: Camera3D = $Camera3D
+@onready var _fx: NeonFx = $NeonFx
 
 
 func _ready() -> void:
@@ -52,6 +60,8 @@ func _ready() -> void:
 	_player.setup(game_config, bpm)
 	_spawner.setup(game_config, difficulty_config, DailySeed.derive(seed_value, DailySeed.SALT_LEVEL), bpm)
 	_setup_camera()
+	_build_sky()
+	_fx.setup(bpm, _speed, music_config.beats_per_bar, _camera)
 	_connect_signals()
 	start_run()
 
@@ -72,6 +82,7 @@ func _connect_signals() -> void:
 	_clock.tick.connect(_player.on_tick)
 	_clock.tick.connect(_track.on_tick)
 	_clock.tick.connect(_spawner.on_tick)
+	_clock.tick.connect(_fx.on_tick)
 	_clock.tick.connect(_on_tick)
 	_player.moved.connect(_spawner.on_player_moved)
 	_spawner.player_hit.connect(_on_player_hit)
@@ -109,6 +120,7 @@ func _on_player_hit(_lane: int, _kind: int) -> void:
 	_clock.stop()
 	_music.stop()
 	_player.set_dead()
+	_fx.calm()
 	best_score = maxi(best_score, score)
 	run_ended.emit(score, best_score)
 
@@ -135,6 +147,24 @@ func _setup_camera() -> void:
 	_camera.keep_aspect = Camera3D.KEEP_WIDTH
 	_camera.fov = game_config.camera_fov
 	_camera.far = game_config.view_distance + game_config.camera_far_margin
+
+
+## Fondo Y2K procedural en un quad hijo de la cámara (cero texturas, un solo draw call).
+func _build_sky() -> void:
+	var distance: float = _camera.far - SKY_DISTANCE_MARGIN
+	var width: float = 2.0 * distance * tan(deg_to_rad(game_config.camera_fov * 0.5)) * SKY_OVERSCAN
+	var quad := QuadMesh.new()
+	quad.size = Vector2(width, width * SKY_ASPECT)
+	var mat := ShaderMaterial.new()
+	mat.shader = SKY_SHADER
+	mat.set_shader_parameter(&"aspect", SKY_ASPECT)
+	var sky := MeshInstance3D.new()
+	sky.name = "Y2KSky"
+	sky.mesh = quad
+	sky.material_override = mat
+	sky.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	sky.position = Vector3(0.0, 0.0, -distance)
+	_camera.add_child(sky)
 
 
 func _load_default_configs() -> void:

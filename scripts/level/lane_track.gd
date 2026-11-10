@@ -1,16 +1,25 @@
 class_name LaneTrack
 extends Node3D
-## Pista infinita de carriles con segmentos reciclados (pool fijo).
+## Pista infinita neón con segmentos reciclados (pool fijo): piso con grilla, rieles
+## laterales y un arco neón por segmento. Más un suelo synthwave fijo alrededor.
 ## El desplazamiento se calcula desde el reloj de audio: offset = song_time * velocidad.
 
-const FLOOR_COLOR_A: Color = Color(0.22, 0.22, 0.25)
-const FLOOR_COLOR_B: Color = Color(0.27, 0.27, 0.3)
-const DIVIDER_COLOR: Color = Color(0.6, 0.6, 0.65)
-## Las franjas alternan cada 2 segmentos, así el patrón no salta al reciclar.
+const GRID_SHADER: Shader = preload("res://assets/shaders/neon_grid.gdshader")
+const GROUND_SHADER: Shader = preload("res://assets/shaders/ground_grid.gdshader")
+## Los colores alternan cada 2 segmentos, así el patrón no salta al reciclar.
 const STRIPE_PERIOD: int = 2
 ## Segmentos que quedan detrás del jugador (debajo de la cámara).
 const SEGMENTS_BEHIND: int = 1
-const DIVIDER_LIFT: float = 0.01
+const RAIL_SIZE: Vector2 = Vector2(0.12, 0.12)
+const ARCH_HEIGHT: float = 3.6
+const ARCH_THICKNESS: float = 0.14
+const ARCH_SIDE_MARGIN: float = 0.5
+const RAIL_GLOW: float = 3.0
+const ARCH_GLOW: float = 2.2
+const GROUND_SIZE: Vector2 = Vector2(220.0, 200.0)
+const GROUND_DEPTH: float = 0.35
+## Distancia hacia adelante del centro del suelo fijo.
+const GROUND_FORWARD: float = 70.0
 
 var _game: GameConfig
 var _speed: float = 14.0
@@ -22,6 +31,7 @@ func setup(game: GameConfig, bpm: float) -> void:
 	_speed = game.scroll_speed(bpm)
 	if _segments.is_empty():
 		_build_segments()
+		_build_ground()
 	on_tick(0.0)
 
 
@@ -36,39 +46,59 @@ func on_tick(song_time: float) -> void:
 
 func _build_segments() -> void:
 	var width: float = _game.lane_width * _game.lane_count
+	var length: float = _game.segment_length
 	var floor_mesh := BoxMesh.new()
-	floor_mesh.size = Vector3(width, _game.floor_thickness, _game.segment_length)
-	var divider_mesh := BoxMesh.new()
-	divider_mesh.size = Vector3(_game.divider_width, _game.floor_thickness, _game.segment_length)
-	var mat_a: StandardMaterial3D = _make_material(FLOOR_COLOR_A)
-	var mat_b: StandardMaterial3D = _make_material(FLOOR_COLOR_B)
-	var mat_div: StandardMaterial3D = _make_material(DIVIDER_COLOR)
+	floor_mesh.size = Vector3(width, _game.floor_thickness, length)
+	var grid := ShaderMaterial.new()
+	grid.shader = GRID_SHADER
+	grid.set_shader_parameter(&"lane_width", _game.lane_width)
+	grid.set_shader_parameter(&"lane_count", float(_game.lane_count))
 
-	# Redondear a múltiplo del período para que las franjas sean continuas.
+	var rail_mesh := BoxMesh.new()
+	rail_mesh.size = Vector3(RAIL_SIZE.x, RAIL_SIZE.y, length)
+	var post_mesh := BoxMesh.new()
+	post_mesh.size = Vector3(ARCH_THICKNESS, ARCH_HEIGHT, ARCH_THICKNESS)
+	var arch_half: float = width * 0.5 + ARCH_SIDE_MARGIN
+	var beam_mesh := BoxMesh.new()
+	beam_mesh.size = Vector3(arch_half * 2.0 + ARCH_THICKNESS, ARCH_THICKNESS, ARCH_THICKNESS)
+	var rail_mat: ShaderMaterial = NeonPalette.solid_material(NeonPalette.CYAN, RAIL_GLOW)
+	var arch_mats: Array[ShaderMaterial] = [
+		NeonPalette.solid_material(NeonPalette.PINK, ARCH_GLOW),
+		NeonPalette.solid_material(NeonPalette.PURPLE, ARCH_GLOW),
+	]
+
 	var count: int = ceili(float(_game.segment_count) / STRIPE_PERIOD) * STRIPE_PERIOD
 	for i: int in count:
 		var segment := Node3D.new()
 		segment.name = "Segment%d" % i
-		var floor_instance := MeshInstance3D.new()
-		floor_instance.mesh = floor_mesh
-		floor_instance.material_override = mat_a if i % STRIPE_PERIOD == 0 else mat_b
-		floor_instance.position = Vector3(0.0, -_game.floor_thickness * 0.5, 0.0)
-		floor_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		segment.add_child(floor_instance)
-		for lane: int in range(1, _game.lane_count):
-			var divider := MeshInstance3D.new()
-			divider.mesh = divider_mesh
-			divider.material_override = mat_div
-			var x: float = (_game.lane_x(lane - 1) + _game.lane_x(lane)) * 0.5
-			divider.position = Vector3(x, -_game.floor_thickness * 0.5 + DIVIDER_LIFT, 0.0)
-			divider.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			segment.add_child(divider)
+		_add_mesh(segment, floor_mesh, grid, Vector3(0.0, -_game.floor_thickness * 0.5, 0.0))
+		for side: float in [-1.0, 1.0]:
+			_add_mesh(segment, rail_mesh, rail_mat, Vector3(side * width * 0.5, RAIL_SIZE.y * 0.5, 0.0))
+			_add_mesh(segment, post_mesh, arch_mats[i % STRIPE_PERIOD],
+					Vector3(side * arch_half, ARCH_HEIGHT * 0.5, -length * 0.5))
+		_add_mesh(segment, beam_mesh, arch_mats[i % STRIPE_PERIOD], Vector3(0.0, ARCH_HEIGHT, -length * 0.5))
 		add_child(segment)
 		_segments.append(segment)
 
 
-static func _make_material(color: Color) -> StandardMaterial3D:
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = color
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	return mat
+func _build_ground() -> void:
+	var plane := PlaneMesh.new()
+	plane.size = GROUND_SIZE
+	var mat := ShaderMaterial.new()
+	mat.shader = GROUND_SHADER
+	var ground := MeshInstance3D.new()
+	ground.name = "Ground"
+	ground.mesh = plane
+	ground.material_override = mat
+	ground.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	ground.position = Vector3(0.0, -GROUND_DEPTH, -GROUND_FORWARD)
+	add_child(ground)
+
+
+static func _add_mesh(parent: Node3D, mesh: Mesh, material: Material, pos: Vector3) -> void:
+	var instance := MeshInstance3D.new()
+	instance.mesh = mesh
+	instance.material_override = material
+	instance.position = pos
+	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	parent.add_child(instance)
