@@ -72,3 +72,13 @@ Pedido del dueño: luces neón ligeras, más rápido, música más fuerte y elec
 - **Música darkwave**: bajo de dos sierras desafinadas con filtro de envolvente (corcheas o galope), arpegio de pulso con eco de corchea con puntillo, progresiones en menor natural (i–VI–III–VII y similares) un acorde por compás, caja "gated" ochentera, loop de 4 compases, saturación suave `tanh` y volumen 0 dB. Notas cacheadas por altura: el render del loop tarda ~220 ms en PC (vigilar en gama baja; mover a hilo en el hito 2 si hace falta).
 - **Tempo 120–140 BPM** (antes 110–140) y **velocidad 9 unidades/beat** (antes 7). — "Más movido". Sigue dentro del rango pedido.
 - **Más obstáculos**: densidad 0,55→0,9, doble bloqueo 0,6, contratiempos desde el 30 % de la rampa, rampa en 32 compases, calentamiento de 4 beats. Las garantías de camino posible y reacción mínima no cambian (tests y piloto automático siguen pasando).
+
+## 2026-11-10 — Menú y patrones más difíciles
+- **Menú construido por código** (`MainMenu` + `NeonTheme`), sin assets: botones con borde y halo neón, título que late al BPM del nivel elegido. El mundo 3D del día se ve quieto detrás (el sol y los destellos siguen animados por el shader).
+- **Selector de nivel**: HOY, días anteriores (hasta 30, ◀ va hacia atrás en el tiempo) y ALEATORIO (`randi()`). No se permiten días futuros. Muestra BPM y semilla antes de jugar (el BPM es la primera tirada del RNG musical, así que calcularlo es instantáneo).
+- **Dificultades como recursos** (`difficulty_easy.tres`, `difficulty_config.tres` = Normal, `difficulty_hard.tres`). La semilla es la misma en todas, pero el patrón cambia con la dificultad: un ranking diario futuro debe separarse por dificultad.
+- **Preferencias en `user://settings.cfg`** (volumen del bus Master, debug, dificultad) con `SettingsStore`.
+- **Pantalla de muerte con REINTENTAR y MENÚ**; los botones no toman foco para que Espacio/toque siga reintentando al instante.
+- **Patrones nuevos**: *puerta de salto* (muros en todos los carriles menos uno con barrera baja, preferentemente el centro: hay que saltar sí o sí) y *barrera baja completa* (3 carriles). El hueco de la puerta siempre cae en un carril alcanzable, así que la garantía de camino se mantiene. Las filas de un solo bloque son minoría desde el inicio (`double_block_start`).
+- **Normal más difícil**: densidad 0,7→0,95, reacción mínima 0,40 s, 0,22 s por carril. Difícil: 0,34 s y 0,18 s. Tests: el validador y el piloto automático pasan en las 3 dificultades.
+- **Ventana de PC 405×720** (antes 540×960): en pantallas de 768 px de alto Windows recortaba la ventana y, con `stretch aspect = expand`, el lienzo se ensanchaba y la UI se salía de los bordes. En el celular no afecta (pantalla completa).
