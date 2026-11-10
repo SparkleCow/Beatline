@@ -4,7 +4,7 @@ extends Resource
 
 @export_group("Ritmo")
 ## Beats iniciales sin obstáculos (calentamiento).
-@export var warmup_beats: int = 8
+@export var warmup_beats: int = 4
 ## Separación mínima entre filas, en beats.
 @export var min_row_gap_beats: float = 1.0
 ## Tiempo mínimo de reacción (s) entre dos filas consecutivas. Se respeta aunque el tempo sea alto.
@@ -16,18 +16,18 @@ extends Resource
 
 @export_group("Densidad")
 ## Probabilidad de fila en un beat candidato al inicio.
-@export_range(0.0, 1.0) var start_density: float = 0.35
+@export_range(0.0, 1.0) var start_density: float = 0.55
 ## Probabilidad máxima de fila en un beat candidato.
-@export_range(0.0, 1.0) var max_density: float = 0.75
+@export_range(0.0, 1.0) var max_density: float = 0.9
 ## Compases hasta alcanzar la dificultad máxima.
-@export var ramp_bars: int = 48
+@export var ramp_bars: int = 32
 
 @export_group("Variedad")
 ## Probabilidad de que una fila bloquee dos carriles (al máximo de la rampa).
-@export_range(0.0, 1.0) var double_block_probability: float = 0.45
+@export_range(0.0, 1.0) var double_block_probability: float = 0.6
 ## Probabilidad de que un bloqueo sea barrera baja (saltable) en vez de muro.
 @export_range(0.0, 1.0) var low_probability: float = 0.3
 ## Progreso (0..1) a partir del cual aparecen filas en contratiempo (medio beat).
-@export_range(0.0, 1.0) var offbeat_unlock_progress: float = 0.5
+@export_range(0.0, 1.0) var offbeat_unlock_progress: float = 0.3
 ## Probabilidad de aceptar un contratiempo candidato una vez desbloqueado.
-@export_range(0.0, 1.0) var offbeat_probability: float = 0.25
+@export_range(0.0, 1.0) var offbeat_probability: float = 0.35

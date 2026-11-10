@@ -9,7 +9,7 @@ extends Resource
 ## Ancho de cada carril (unidades de mundo).
 @export var lane_width: float = 2.0
 ## Distancia que avanza el mundo por beat. La velocidad real = units_per_beat * bpm / 60.
-@export var units_per_beat: float = 7.0
+@export var units_per_beat: float = 9.0
 ## Largo de cada segmento reciclable de la pista.
 @export var segment_length: float = 10.0
 ## Cantidad de segmentos en el pool (deben cubrir view_distance + lo que queda detrás de cámara).
