@@ -1,0 +1,28 @@
+# Godot 4
+.godot/
+/android/
+*.import.tmp
+*.tmp
+
+# Exports / builds
+export/
+build/
+builds/
+*.apk
+*.aab
+*.ipa
+export_presets.cfg.bak
+
+# Secretos
+.env
+.env.*
+secrets/
+
+# Claude Code (local)
+.claude/settings.local.json
+
+# SO / editores
+.DS_Store
+Thumbs.db
+.vscode/
+*.log
