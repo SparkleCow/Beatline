@@ -32,7 +32,20 @@ func _process(_delta: float) -> void:
 	fill_buffer()
 
 
+func _notification(what: int) -> void:
+	# Al cerrar, soltar la reproducción antes de que el AudioServer se apague (evita fugas).
+	if what == NOTIFICATION_PREDELETE or what == NOTIFICATION_WM_CLOSE_REQUEST:
+		_release_playback()
+
+
 func _exit_tree() -> void:
+	_release_playback()
+
+
+func _release_playback() -> void:
+	if _player != null and is_instance_valid(_player):
+		_player.stop()
+		_player.stream = null
 	_playback = null
 
 
