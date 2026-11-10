@@ -15,6 +15,7 @@ const PROCESS_PRIORITY: int = -100
 var config: MusicConfig
 var bpm: float = 0.0
 var pattern: DrumPattern
+var melody: MelodyPattern
 
 var _player: AudioStreamPlayer
 var _playback: AudioStreamGeneratorPlayback
@@ -56,7 +57,8 @@ func setup(cfg: MusicConfig, music_seed: int) -> void:
 	rng.seed = music_seed
 	bpm = choose_bpm(rng, cfg)
 	pattern = DrumPattern.generate(rng, cfg)
-	_loop = SynthVoices.render_pattern(pattern, bpm, cfg.mix_rate, music_seed)
+	melody = MelodyPattern.generate(rng, cfg)
+	_loop = SynthVoices.render_pattern(pattern, melody, cfg, bpm, music_seed)
 	_ensure_player()
 
 

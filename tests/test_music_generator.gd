@@ -3,6 +3,7 @@ extends "res://tests/base_test.gd"
 
 const SEEDS_TO_CHECK: int = 50
 const MIN_BPM: float = 110.0
+const OCTAVE: int = 12
 const MAX_BPM: float = 140.0
 
 var _cfg: MusicConfig = load("res://resources/music_config.tres") as MusicConfig
@@ -55,4 +56,20 @@ func _render(seed_value: int) -> Dictionary:
 	rng.seed = seed_value
 	var bpm: float = MusicGenerator.choose_bpm(rng, _cfg)
 	var pattern: DrumPattern = DrumPattern.generate(rng, _cfg)
-	return {"bpm": bpm, "buffer": SynthVoices.render_pattern(pattern, bpm, _cfg.mix_rate, seed_value)}
+	var melody: MelodyPattern = MelodyPattern.generate(rng, _cfg)
+	return {"bpm": bpm, "buffer": SynthVoices.render_pattern(pattern, melody, _cfg, bpm, seed_value)}
+
+
+func test_melody_stays_in_key() -> void:
+	# Todas las notas de bajo y arpegio pertenecen a la menor natural de la fundamental.
+	for seed_value: int in SEEDS_TO_CHECK:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = seed_value
+		var m: MelodyPattern = MelodyPattern.generate(rng, _cfg)
+		for arr: PackedInt32Array in [m.bass, m.arp]:
+			for note: int in arr:
+				if note == MelodyPattern.NO_NOTE:
+					continue
+				if not _cfg.scale_natural_minor.has(posmod(note - m.root_midi, OCTAVE)):
+					fail("semilla %d: nota %d fuera de escala" % [seed_value, note])
+					return
