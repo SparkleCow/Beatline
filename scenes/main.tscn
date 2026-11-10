@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://scripts/core/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/game.tscn" id="2_game"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="3_hud"]
+[ext_resource type="PackedScene" path="res://scenes/ui/main_menu.tscn" id="4_menu"]
 
 [node name="Main" type="Node"]
 script = ExtResource("1_main")
@@ -10,3 +11,8 @@ script = ExtResource("1_main")
 [node name="Game" parent="." instance=ExtResource("2_game")]
 
 [node name="Hud" parent="." instance=ExtResource("3_hud")]
+
+[node name="MenuLayer" type="CanvasLayer" parent="."]
+layer = 2
+
+[node name="MainMenu" parent="MenuLayer" instance=ExtResource("4_menu")]
