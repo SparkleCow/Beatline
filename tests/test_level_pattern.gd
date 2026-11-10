@@ -115,6 +115,35 @@ func test_validator_detects_impossible_pattern() -> void:
 	assert_ne(LevelPattern.validate(rows, 3, 0, 0.25, 0.1, 0.5, 0.45, 0.05), "", "salto de 2 carriles imposible")
 
 
+func test_jump_gates_and_full_low_rows_appear() -> void:
+	var gates: int = 0
+	var full_low: int = 0
+	var p: LevelPattern = _make(START_SEED + 21, 130.0)
+	p.generate_until(BEATS_TO_GENERATE)
+	for row: LevelPattern.Row in p.rows:
+		var walls: int = row.lanes.count(LevelPattern.Kind.WALL)
+		var lows: int = row.lanes.count(LevelPattern.Kind.LOW)
+		if walls == _game.lane_count - 1 and lows == 1:
+			gates += 1
+		if lows == _game.lane_count:
+			full_low += 1
+	assert_true(gates > 0, "debe haber puertas de salto (muro-bajo-muro)")
+	assert_true(full_low > 0, "debe haber barreras bajas completas")
+
+
+func test_hard_presets_never_impossible() -> void:
+	for path: String in ["res://resources/difficulty_easy.tres", "res://resources/difficulty_hard.tres"]:
+		var diff: DifficultyConfig = load(path) as DifficultyConfig
+		for i: int in SEEDS_TO_CHECK:
+			var bpm: float = float(_music.bpm_options[i % _music.bpm_options.size()])
+			var p := LevelPattern.new(START_SEED + i, bpm, _game, diff)
+			p.generate_until(BEATS_TO_GENERATE)
+			var err: String = p.validate_self()
+			if err != "":
+				fail("%s semilla %d: %s" % [diff.display_name, START_SEED + i, err])
+				return
+
+
 func _signature(p: LevelPattern) -> String:
 	var parts: PackedStringArray = PackedStringArray()
 	for row: LevelPattern.Row in p.rows:

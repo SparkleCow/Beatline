@@ -162,19 +162,13 @@ func _add_row(b: float, t: float, progress: float) -> void:
 
 	var lanes := PackedInt32Array()
 	lanes.resize(lane_count)
-	var blocked: int = 1
-	if _rng.randf() < _difficulty.double_block_probability * progress:
-		blocked = 2
-	blocked = mini(blocked, lane_count - 1)
-	var free_lanes: Array[int] = []
-	for i: int in lane_count:
-		free_lanes.append(i)
-	for i: int in blocked:
-		var pick: int = _rng.randi_range(0, free_lanes.size() - 1)
-		var lane: int = free_lanes[pick]
-		free_lanes.remove_at(pick)
-		var is_low: bool = can_jump and _rng.randf() < _difficulty.low_probability
-		lanes[lane] = Kind.LOW if is_low else Kind.WALL
+	var shape_roll: float = _rng.randf()
+	if can_jump and shape_roll < _difficulty.jump_gate_probability:
+		lanes = _fill_jump_gate(lanes, before)
+	elif can_jump and shape_roll < _difficulty.jump_gate_probability + _difficulty.full_low_probability:
+		lanes.fill(Kind.LOW)
+	else:
+		lanes = _fill_blocks(lanes, progress, can_jump)
 
 	var after: int = before & passable_mask(lanes, can_jump)
 	if after == 0:
@@ -192,3 +186,39 @@ func _add_row(b: float, t: float, progress: float) -> void:
 	rows.append(Row.new(b, t, lanes))
 	_reachable_mask = after
 	_last_row_time = t
+
+
+## (Los Packed*Array se copian al pasarlos: los helpers devuelven el arreglo.)
+## Bloques sueltos: 1 o 2 carriles (la probabilidad de 2 sube con la rampa), muros o bajos.
+func _fill_blocks(lanes: PackedInt32Array, progress: float, can_jump: bool) -> PackedInt32Array:
+	var blocked: int = 1
+	var double_p: float = lerpf(_difficulty.double_block_start, _difficulty.double_block_probability, progress)
+	if _rng.randf() < double_p:
+		blocked = 2
+	blocked = mini(blocked, lane_count - 1)
+	var free_lanes: Array[int] = []
+	for i: int in lane_count:
+		free_lanes.append(i)
+	for i: int in blocked:
+		var pick: int = _rng.randi_range(0, free_lanes.size() - 1)
+		var lane: int = free_lanes[pick]
+		free_lanes.remove_at(pick)
+		var is_low: bool = can_jump and _rng.randf() < _difficulty.low_probability
+		lanes[lane] = Kind.LOW if is_low else Kind.WALL
+	return lanes
+
+
+## Puerta de salto: muros en todos los carriles menos uno, que tiene barrera baja.
+## Prefiere el centro; el hueco siempre cae en un carril alcanzable.
+func _fill_jump_gate(lanes: PackedInt32Array, reachable_before: int) -> PackedInt32Array:
+	lanes.fill(Kind.WALL)
+	var center: int = floori(float(lane_count - 1) * 0.5)
+	var gap: int = center
+	if not (reachable_before & (1 << center)) or _rng.randf() >= _difficulty.jump_gate_center_bias:
+		var candidates: Array[int] = []
+		for i: int in lane_count:
+			if reachable_before & (1 << i):
+				candidates.append(i)
+		gap = candidates[_rng.randi_range(0, candidates.size() - 1)]
+	lanes[gap] = Kind.LOW
+	return lanes

@@ -8,18 +8,26 @@ const BEATS_TO_PLAY: float = 220.0
 const TICK: float = 1.0 / 60.0
 const INPUT_EPSILON: float = 0.005
 const PLAN_EXTRA_BEATS: float = 16.0
+const DIFFICULTY_PATHS: Array[String] = [
+	"res://resources/difficulty_easy.tres",
+	"res://resources/difficulty_config.tres",
+	"res://resources/difficulty_hard.tres",
+]
 
 var _game: GameConfig = load("res://resources/game_config.tres") as GameConfig
 var _difficulty: DifficultyConfig = load("res://resources/difficulty_config.tres") as DifficultyConfig
 var _music: MusicConfig = load("res://resources/music_config.tres") as MusicConfig
 
 
-func test_autopilot_survives_every_seed_and_tempo() -> void:
-	for i: int in SEEDS.size():
-		var bpm: float = float(_music.bpm_options[i % _music.bpm_options.size()])
-		var result: String = _play(SEEDS[i], bpm)
-		if result != "":
-			fail("semilla %d bpm %d: %s" % [SEEDS[i], bpm, result])
+func test_autopilot_survives_every_seed_tempo_and_difficulty() -> void:
+	for path: String in DIFFICULTY_PATHS:
+		_difficulty = load(path) as DifficultyConfig
+		for i: int in SEEDS.size():
+			var bpm: float = float(_music.bpm_options[i % _music.bpm_options.size()])
+			var result: String = _play(SEEDS[i], bpm)
+			if result != "":
+				fail("%s semilla %d bpm %d: %s" % [_difficulty.display_name, SEEDS[i], bpm, result])
+	_difficulty = load(DIFFICULTY_PATHS[1]) as DifficultyConfig
 
 
 func test_idle_player_eventually_hits() -> void:
