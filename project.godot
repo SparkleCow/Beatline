@@ -16,10 +16,6 @@ run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.7", "Mobile")
 config/icon="res://icon.svg"
 
-[audio]
-
-driver/output_latency=15
-
 [debug]
 
 gdscript/warnings/untyped_declaration=1
@@ -34,7 +30,6 @@ window/size/window_height_override=960
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/handheld/orientation=1
-window/vsync/vsync_mode=1
 
 [input_devices]
 
@@ -43,9 +38,20 @@ pointing/emulate_touch_from_mouse=true
 [rendering]
 
 renderer/rendering_method="mobile"
-renderer/rendering_method.mobile="mobile"
-renderer/rendering_method.web="gl_compatibility"
-rendering_device/fallback_to_opengl3=true
-anti_aliasing/quality/msaa_3d=0
 textures/vram_compression/import_etc2_astc=true
 lights_and_shadows/directional_shadow/size=1024
+
+[shader_globals]
+
+beat_pulse={
+"type": "float",
+"value": 0.0
+}
+world_scroll={
+"type": "float",
+"value": 0.0
+}
+bar_index={
+"type": "float",
+"value": 0.0
+}
