@@ -58,3 +58,17 @@ Formato: decisión — por qué — consecuencias / cómo revertir.
 ### Claude Code
 - Permisos en `.claude/settings.json` verificados contra la documentación oficial (sintaxis `Bash(cmd *)`, `Read(./ruta)`, precedencia deny > ask > allow). Se incluyen equivalentes `PowerShell(...)` porque en Windows Claude Code también usa PowerShell.
 - Comandos personalizados en `.claude/commands/*.md` (siguen soportados; equivalen a skills). Subagente `revisor` con herramientas `Read, Grep, Glob` (solo lectura).
+
+## 2026-11-10 — Pase neón Y2K + darkwave (adelanto de hitos 2 y 3)
+Pedido del dueño: luces neón ligeras, más rápido, música más fuerte y electrónica (darkwave), más obstáculos, mucho color y fondo Y2K.
+- **Fondo Y2K 100 % procedural** (shader en un quad hijo de la cámara: degradado, sol synthwave a franjas, destellos ✦ titilando, scanlines) en vez de GIFs. — Los GIFs serían assets externos (regla: preguntar), Godot no los reproduce nativamente y pesan; el shader es un solo draw call y cero memoria de texturas.
+- **Glow del WorldEnvironment** (umbral HDR 0,9, niveles 1–4) + materiales unshaded con color > 1. — Un único post-proceso barato da todo el brillo; nada de luces dinámicas ni sombras.
+- **Variables globales de shader** (`beat_pulse`, `world_scroll`, `bar_index` en `[shader_globals]`) que actualiza `NeonFx` desde `RhythmClock.tick`. — Todos los materiales laten con el beat sin tocar cada material ni usar delta. Funcionan también en Compatibility (web).
+- **Colores por compás**: cada compás de obstáculos usa un color de `NeonPalette` (rosa, cian, morado, lima, naranja); un material compartido por color y tipo (10 en total). No se usan `instance uniform` por compatibilidad con web.
+- **Obstáculos estilo wireframe/Tron** (aristas brillantes calculadas en el shader desde la posición local) y barreras bajas con franjas.
+- **Pista**: grilla neón en shader (sin mallas divisorias), rieles cian, un arco por segmento (rosa/morado alternados) y suelo synthwave infinito alrededor.
+- **Partículas CPU** (estela del jugador y explosión al morir). Son solo visuales: usan delta interno, no afectan la jugabilidad. CPUParticles por compatibilidad con gama baja y web.
+- **Golpe de FOV** de 3° en cada beat.
+- **Música darkwave**: bajo de dos sierras desafinadas con filtro de envolvente (corcheas o galope), arpegio de pulso con eco de corchea con puntillo, progresiones en menor natural (i–VI–III–VII y similares) un acorde por compás, caja "gated" ochentera, loop de 4 compases, saturación suave `tanh` y volumen 0 dB. Notas cacheadas por altura: el render del loop tarda ~220 ms en PC (vigilar en gama baja; mover a hilo en el hito 2 si hace falta).
+- **Tempo 120–140 BPM** (antes 110–140) y **velocidad 9 unidades/beat** (antes 7). — "Más movido". Sigue dentro del rango pedido.
+- **Más obstáculos**: densidad 0,55→0,9, doble bloqueo 0,6, contratiempos desde el 30 % de la rampa, rampa en 32 compases, calentamiento de 4 beats. Las garantías de camino posible y reacción mínima no cambian (tests y piloto automático siguen pasando).

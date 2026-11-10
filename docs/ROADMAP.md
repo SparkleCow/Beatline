@@ -12,10 +12,10 @@ Objetivo: comprobar si es divertido. Cubos grises y batería simple.
 - [x] Overlay debug: BPM, beat, semilla, FPS.
 - [ ] **Probar en un Android de gama baja real** y ajustar `GameConfig` / `DifficultyConfig` según la sensación.
 
-## Hito 2 — Música procedural completa
+## Hito 2 — Música procedural completa (parcial: bajo + arpegio darkwave ya listos)
 Bajo y melodía (pentatónica menor / menor natural), progresiones, secciones (intro, build, drop), variación por compás. Render por adelantado en hilo para no tocar el frame. Obstáculos que siguen acentos de la música (no solo el pulso).
 
-## Hito 3 — Estética neón y game feel
+## Hito 3 — Estética neón y game feel (parcial: glow, fondo Y2K, colores por compás, estela, explosión, pulso)
 Glow, paleta neón sobre fondo oscuro, partículas, pulso de la pista con el bajo, cámara con *shake* sutil, vibración háptica, transiciones. Shaders simples y baratos.
 
 ## Hito 4 — Nivel diario, rachas y tarjeta para compartir
