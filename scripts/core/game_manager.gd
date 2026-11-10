@@ -11,7 +11,7 @@ signal run_ended(score: int, best: int)
 signal debug_stats_changed(stats: Dictionary)
 signal debug_toggled
 
-enum State { BOOT, PLAYING, DEAD }
+enum State { MENU, PLAYING, DEAD }
 
 const DEBUG_REFRESH_USEC: int = 100_000
 const MSEC_PER_SEC: float = 1000.0
@@ -30,11 +30,12 @@ const SKY_ASPECT: float = 2.0
 @export var music_config: MusicConfig
 @export var difficulty_config: DifficultyConfig
 
-var state: State = State.BOOT
+var state: State = State.MENU
 var seed_value: int = 0
 var score: int = 0
 var best_score: int = 0
 
+var _prepared: bool = false
 var _death_usec: int = 0
 var _last_debug_usec: int = 0
 var _speed: float = 14.0
@@ -51,19 +52,53 @@ var _speed: float = 14.0
 
 func _ready() -> void:
 	_load_default_configs()
-	seed_value = DailySeed.current_seed()
-	_music.setup(music_config, DailySeed.derive(seed_value, DailySeed.SALT_MUSIC))
+	_setup_camera()
+	_build_sky()
+	_connect_signals()
+	# El mundo se prepara con el nivel del día para que se vea detrás del menú.
+	prepare(DailySeed.current_seed(), difficulty_config)
+
+
+## Prepara todos los sistemas para una semilla y dificultad. Re-renderiza la música solo
+## si cambió la semilla. No arranca la partida.
+func prepare(new_seed: int, difficulty: DifficultyConfig) -> void:
+	var seed_changed: bool = not _prepared or new_seed != seed_value
+	seed_value = new_seed
+	difficulty_config = difficulty
+	if seed_changed:
+		_music.setup(music_config, DailySeed.derive(seed_value, DailySeed.SALT_MUSIC))
 	var bpm: float = _music.bpm
 	_speed = game_config.scroll_speed(bpm)
-
 	_track.setup(game_config, bpm)
 	_player.setup(game_config, bpm)
 	_spawner.setup(game_config, difficulty_config, DailySeed.derive(seed_value, DailySeed.SALT_LEVEL), bpm)
-	_setup_camera()
-	_build_sky()
+	_camera.fov = game_config.camera_fov
 	_fx.setup(bpm, _speed, music_config.beats_per_bar, _camera)
-	_connect_signals()
+	if seed_changed:
+		best_score = 0
+	_prepared = true
+
+
+## Prepara (si hace falta) y arranca una partida. Lo llama el menú.
+func begin(new_seed: int, difficulty: DifficultyConfig) -> void:
+	if not _prepared or new_seed != seed_value or difficulty != difficulty_config:
+		prepare(new_seed, difficulty)
 	start_run()
+
+
+## Detiene todo y deja el mundo quieto detrás del menú.
+func go_to_menu() -> void:
+	_clock.stop()
+	_music.stop()
+	_fx.calm()
+	_spawner.reset()
+	_player.reset()
+	_track.on_tick(0.0)
+	state = State.MENU
+
+
+func current_bpm() -> float:
+	return _music.bpm
 
 
 func start_run() -> void:
@@ -96,9 +131,16 @@ func _on_jump_requested() -> void:
 		State.PLAYING:
 			_player.request_jump()
 		State.DEAD:
-			var elapsed: float = float(Time.get_ticks_usec() - _death_usec) / 1_000_000.0
-			if elapsed >= game_config.restart_lockout:
-				start_run()
+			retry()
+
+
+## Reinicia tras morir (respeta el bloqueo anti-toque accidental).
+func retry() -> void:
+	if state != State.DEAD:
+		return
+	var elapsed: float = float(Time.get_ticks_usec() - _death_usec) / 1_000_000.0
+	if elapsed >= game_config.restart_lockout:
+		start_run()
 
 
 func _on_tick(song_time: float) -> void:

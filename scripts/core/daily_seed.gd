@@ -17,6 +17,7 @@ const ARG_SEED: String = "--seed="
 const ARG_DATE: String = "--date="
 const DATE_SEPARATOR: String = "-"
 const DATE_PARTS: int = 3
+const SECONDS_PER_DAY: int = 86400
 
 const SALT_MUSIC: String = "music"
 const SALT_LEVEL: String = "level"
@@ -46,6 +47,18 @@ static func seed_for_date(year: int, month: int, day: int) -> int:
 ## Semilla del día actual en UTC.
 static func today_utc_seed() -> int:
 	var d: Dictionary = Time.get_date_dict_from_system(true)
+	return seed_for_date(int(d["year"]), int(d["month"]), int(d["day"]))
+
+
+## Fecha UTC de hace `days_ago` días (0 = hoy) como diccionario {year, month, day}.
+static func utc_date_days_ago(days_ago: int) -> Dictionary:
+	var unix: int = int(Time.get_unix_time_from_system()) - days_ago * SECONDS_PER_DAY
+	return Time.get_date_dict_from_unix_time(unix)
+
+
+## Semilla del nivel de hace `days_ago` días (0 = hoy).
+static func seed_for_days_ago(days_ago: int) -> int:
+	var d: Dictionary = utc_date_days_ago(days_ago)
 	return seed_for_date(int(d["year"]), int(d["month"]), int(d["day"]))
 
 

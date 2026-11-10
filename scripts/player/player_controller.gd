@@ -46,6 +46,8 @@ func setup(game: GameConfig, bpm: float) -> void:
 	if _mesh_instance == null:
 		_build_mesh()
 		_build_particles()
+	_trail.initial_velocity_min = _speed
+	_trail.initial_velocity_max = _speed
 	reset()
 
 
