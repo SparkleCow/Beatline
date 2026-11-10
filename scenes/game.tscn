@@ -1,0 +1,55 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/core/game_manager.gd" id="1_gm"]
+[ext_resource type="Resource" path="res://resources/game_config.tres" id="2_gc"]
+[ext_resource type="Resource" path="res://resources/music_config.tres" id="3_mc"]
+[ext_resource type="Resource" path="res://resources/difficulty_config.tres" id="4_dc"]
+[ext_resource type="Script" path="res://scripts/audio/music_generator.gd" id="5_mg"]
+[ext_resource type="Script" path="res://scripts/core/rhythm_clock.gd" id="6_rc"]
+[ext_resource type="Script" path="res://scripts/player/input_handler.gd" id="7_ih"]
+[ext_resource type="Script" path="res://scripts/level/lane_track.gd" id="8_lt"]
+[ext_resource type="Script" path="res://scripts/level/obstacle_spawner.gd" id="9_os"]
+[ext_resource type="Script" path="res://scripts/player/player_controller.gd" id="10_pc"]
+
+[sub_resource type="Environment" id="Environment_proto"]
+background_mode = 1
+background_color = Color(0.08, 0.08, 0.1, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.55, 0.55, 0.6, 1)
+fog_enabled = true
+fog_light_color = Color(0.08, 0.08, 0.1, 1)
+fog_density = 0.025
+
+[node name="Game" type="Node3D"]
+script = ExtResource("1_gm")
+game_config = ExtResource("2_gc")
+music_config = ExtResource("3_mc")
+difficulty_config = ExtResource("4_dc")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_proto")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.5, 0.866025, 0, -0.866025, 0.5, 0, 10, 0)
+light_energy = 0.8
+
+[node name="Camera3D" type="Camera3D" parent="."]
+current = true
+
+[node name="MusicGenerator" type="Node" parent="."]
+script = ExtResource("5_mg")
+
+[node name="RhythmClock" type="Node" parent="."]
+script = ExtResource("6_rc")
+
+[node name="InputHandler" type="Node" parent="."]
+script = ExtResource("7_ih")
+
+[node name="LaneTrack" type="Node3D" parent="."]
+script = ExtResource("8_lt")
+
+[node name="ObstacleSpawner" type="Node3D" parent="."]
+script = ExtResource("9_os")
+
+[node name="Player" type="Node3D" parent="."]
+script = ExtResource("10_pc")
