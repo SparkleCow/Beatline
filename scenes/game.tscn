@@ -1,0 +1,81 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/core/game_manager.gd" id="1_gm"]
+[ext_resource type="Resource" path="res://resources/game_config.tres" id="2_gc"]
+[ext_resource type="Resource" path="res://resources/music_config.tres" id="3_mc"]
+[ext_resource type="Resource" path="res://resources/difficulty_config.tres" id="4_dc"]
+[ext_resource type="Script" path="res://scripts/audio/music_generator.gd" id="5_mg"]
+[ext_resource type="Script" path="res://scripts/core/rhythm_clock.gd" id="6_rc"]
+[ext_resource type="Script" path="res://scripts/player/input_handler.gd" id="7_ih"]
+[ext_resource type="Script" path="res://scripts/level/lane_track.gd" id="8_lt"]
+[ext_resource type="Script" path="res://scripts/level/obstacle_spawner.gd" id="9_os"]
+[ext_resource type="Script" path="res://scripts/player/player_controller.gd" id="10_pc"]
+[ext_resource type="Script" path="res://scripts/fx/neon_fx.gd" id="11_fx"]
+[ext_resource type="Script" path="res://scripts/fx/camera_rig.gd" id="12_cam"]
+[ext_resource type="Script" path="res://scripts/audio/track_player.gd" id="13_tp"]
+[ext_resource type="Script" path="res://scripts/audio/sfx_player.gd" id="14_sfx"]
+
+[sub_resource type="Environment" id="Environment_proto"]
+background_mode = 1
+background_color = Color(0.02, 0, 0.06, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.55, 0.4, 0.7, 1)
+tonemap_mode = 0
+glow_enabled = true
+glow_levels/1 = 1.0
+glow_levels/2 = 1.0
+glow_levels/3 = 1.0
+glow_levels/4 = 0.6
+glow_levels/5 = 0.0
+glow_intensity = 1.1
+glow_strength = 1.0
+glow_bloom = 0.05
+glow_blend_mode = 1
+glow_hdr_threshold = 0.9
+fog_enabled = true
+fog_light_color = Color(0.45, 0.04, 0.38, 1)
+fog_density = 0.018
+
+[node name="Game" type="Node3D"]
+script = ExtResource("1_gm")
+game_config = ExtResource("2_gc")
+music_config = ExtResource("3_mc")
+difficulty_config = ExtResource("4_dc")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_proto")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.5, 0.866025, 0, -0.866025, 0.5, 0, 10, 0)
+light_energy = 0.8
+
+[node name="Camera3D" type="Camera3D" parent="."]
+current = true
+script = ExtResource("12_cam")
+
+[node name="MusicGenerator" type="Node" parent="."]
+script = ExtResource("5_mg")
+
+[node name="RhythmClock" type="Node" parent="."]
+script = ExtResource("6_rc")
+
+[node name="InputHandler" type="Node" parent="."]
+script = ExtResource("7_ih")
+
+[node name="LaneTrack" type="Node3D" parent="."]
+script = ExtResource("8_lt")
+
+[node name="ObstacleSpawner" type="Node3D" parent="."]
+script = ExtResource("9_os")
+
+[node name="Player" type="Node3D" parent="."]
+script = ExtResource("10_pc")
+
+[node name="NeonFx" type="Node" parent="."]
+script = ExtResource("11_fx")
+
+[node name="TrackPlayer" type="Node" parent="."]
+script = ExtResource("13_tp")
+
+[node name="SfxPlayer" type="Node" parent="."]
+script = ExtResource("14_sfx")

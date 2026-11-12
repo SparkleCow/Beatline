@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="DifficultyConfig" format=3]
+
+[ext_resource type="Script" path="res://scripts/config/difficulty_config.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+display_name = "Fácil"
+warmup_beats = 8
+min_reaction_time = 0.5
+min_time_per_lane_move = 0.28
+start_density = 0.4
+max_density = 0.7
+ramp_bars = 48
+double_block_start = 0.15
+double_block_probability = 0.5
+low_probability = 0.3
+offbeat_unlock_progress = 0.7
+offbeat_probability = 0.2
+jump_gate_probability = 0.06
+full_low_probability = 0.03
+gap_probability = 0.2
+platform_probability = 0.1
+mover_probability = 0.05
+ramp_gate_probability = 0.04
+open_edge_probability = 0.08
+gem_probability = 0.6
