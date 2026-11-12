@@ -11,6 +11,9 @@
 [ext_resource type="Script" path="res://scripts/level/obstacle_spawner.gd" id="9_os"]
 [ext_resource type="Script" path="res://scripts/player/player_controller.gd" id="10_pc"]
 [ext_resource type="Script" path="res://scripts/fx/neon_fx.gd" id="11_fx"]
+[ext_resource type="Script" path="res://scripts/fx/camera_rig.gd" id="12_cam"]
+[ext_resource type="Script" path="res://scripts/audio/track_player.gd" id="13_tp"]
+[ext_resource type="Script" path="res://scripts/audio/sfx_player.gd" id="14_sfx"]
 
 [sub_resource type="Environment" id="Environment_proto"]
 background_mode = 1
@@ -48,6 +51,7 @@ light_energy = 0.8
 
 [node name="Camera3D" type="Camera3D" parent="."]
 current = true
+script = ExtResource("12_cam")
 
 [node name="MusicGenerator" type="Node" parent="."]
 script = ExtResource("5_mg")
@@ -69,3 +73,9 @@ script = ExtResource("10_pc")
 
 [node name="NeonFx" type="Node" parent="."]
 script = ExtResource("11_fx")
+
+[node name="TrackPlayer" type="Node" parent="."]
+script = ExtResource("13_tp")
+
+[node name="SfxPlayer" type="Node" parent="."]
+script = ExtResource("14_sfx")

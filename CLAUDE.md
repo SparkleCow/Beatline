@@ -1,7 +1,7 @@
 # Beatline — guía para Claude
 
 ## El juego
-Runner rítmico 3D por carriles para móvil (vertical). El jugador avanza solo por una pista de neón de 3 carriles: desliza izq/der para cambiar de carril y toca para saltar. Los obstáculos llegan sincronizados con la música.
+Runner rítmico 3D por carriles para móvil (vertical). El jugador avanza solo por una pista de neón de 5 carriles: desliza izq/der para cambiar de carril y toca para saltar (toque = salto corto; deslizar arriba y mantener = salto alto). Hay huecos, plataformas elevadas, rampas, muros móviles, tramos sin riel y gemas. Los obstáculos llegan sincronizados con la música.
 
 - **Gancho:** nivel diario. Una semilla derivada de la fecha UTC genera el nivel **y** la música del día; todos juegan lo mismo ese día.
 - **Música procedural:** generada por código desde la semilla (bombo, caja, hi-hat, bajo, melodía; pentatónica / menor natural; 110–140 BPM). Cero música con derechos.
@@ -21,12 +21,13 @@ Runner rítmico 3D por carriles para móvil (vertical). El jugador avanza solo p
 | `scenes/` | `main.tscn` (raíz), `game.tscn` (mundo 3D y sistemas), `ui/hud.tscn` |
 | `scripts/core/` | `game_manager` (orquesta y cablea señales), `daily_seed`, `rhythm_clock`, `main` |
 | `scripts/config/` | Clases `Resource` de configuración (`GameConfig`, `MusicConfig`, `DifficultyConfig`) |
-| `scripts/level/` | `level_pattern` (lógica pura del nivel), `obstacle_spawner`, `obstacle`, `lane_track` |
+| `scripts/level/` | `level_pattern` (lógica pura del nivel), `obstacle_spawner`, `obstacle`, `lane_track`, `level_catalog` (niveles fijos) |
 | `scripts/player/` | `player_controller`, `input_handler` |
-| `scripts/audio/` | `music_generator`, `synth_voices`, `drum_pattern` |
-| `scripts/ui/` | `hud`, `debug_overlay` |
+| `scripts/audio/` | `music_generator`, `synth_voices`, `drum_pattern`, `track_library` + `track_player` (pistas .ogg), `sfx_player` |
+| `scripts/fx/` | `neon_fx` (pulso de shaders), `camera_rig` (cámara estable), `neon_palette` |
+| `scripts/ui/` | `hud`, `main_menu`, `neon_theme`, `retro_window`, `segment_display`, `retro_gif`, `debug_overlay` |
 | `resources/` | Instancias `.tres` de configuración (tempos, escalas, dificultad, pista) |
-| `assets/` | `audio/`, `fonts/`, `shaders/` (vacías por ahora) |
+| `assets/` | `audio/music/` (pistas `nombre_<BPM>bpm.ogg`), `sprites/` (tiras PNG para `RetroGif`), `fonts/`, `shaders/` |
 | `tests/` | Runner propio (`run_tests.gd`) + `test_*.gd` |
 | `tools/` | `godot.sh` (Godot headless) y `verify.sh` (verificación completa) |
 | `docs/` | `DECISIONES.md` (registro de decisiones), `ROADMAP.md` |
@@ -70,7 +71,7 @@ Comandos de proyecto: `/verificar`, `/nuevo-sistema <nombre>`, `/checkpoint`. Su
 ## Qué NO hacer
 - No agregar plugins, addons ni assets externos sin preguntar.
 - No tocar monetización (AdMob, compras) hasta el hito 6.
-- No usar música ni samples con derechos: todo el audio se sintetiza por código.
+- No usar música ni samples con derechos. Los SFX se sintetizan por código; las pistas .ogg deben ser originales o de licencia libre (ver `tools/music/compose.py`).
 - No hacer `git push` ni crear remotos: lo hace el dueño del repo.
 - No calcular tiempos de gameplay con delta acumulado (ver regla de oro).
 - No leer `.env` ni `secrets/`.

@@ -7,6 +7,8 @@ const SEEDS: Array[int] = [1, 2, 3, 2026, 99999, 1813764870]
 const BEATS_TO_PLAY: float = 220.0
 const TICK: float = 1.0 / 60.0
 const INPUT_EPSILON: float = 0.005
+## "Tipo" con el que se reporta una caída al vacío.
+const FELL_KIND: int = -1
 const PLAN_EXTRA_BEATS: float = 16.0
 const DIFFICULTY_PATHS: Array[String] = [
 	"res://resources/difficulty_easy.tres",
@@ -30,6 +32,17 @@ func test_autopilot_survives_every_seed_tempo_and_difficulty() -> void:
 	_difficulty = load(DIFFICULTY_PATHS[1]) as DifficultyConfig
 
 
+func test_autopilot_survives_fixed_stages() -> void:
+	# Los niveles fijos son duros, pero deben seguir siendo posibles.
+	for stage: LevelCatalog.Stage in LevelCatalog.stages():
+		_difficulty = stage.difficulty
+		for bpm: int in [120, 140, 165]:
+			var result: String = _play(stage.seed_value, float(bpm))
+			if result != "":
+				fail("%s bpm %d: %s" % [stage.title, bpm, result])
+	_difficulty = load(DIFFICULTY_PATHS[1]) as DifficultyConfig
+
+
 func test_idle_player_eventually_hits() -> void:
 	# Control negativo: sin input el jugador debe chocar (las colisiones funcionan).
 	var spawner := ObstacleSpawner.new()
@@ -37,14 +50,16 @@ func test_idle_player_eventually_hits() -> void:
 	spawner.setup(_game, _difficulty, 7, 120.0)
 	player.setup(_game, 120.0)
 	player.moved.connect(spawner.on_player_moved)
+	player.ground_query = spawner.ground_height_at
 	var hits: Array[int] = []
 	spawner.player_hit.connect(func(_l: int, _k: int) -> void: hits.append(1))
+	player.fell.connect(func() -> void: hits.append(1))
 	var t: float = 0.0
 	while t < RhythmClock.time_of_beat(BEATS_TO_PLAY, 120.0) and hits.is_empty():
 		player.on_tick(t)
 		spawner.on_tick(t)
 		t += TICK
-	assert_false(hits.is_empty(), "un jugador quieto debería chocar")
+	assert_false(hits.is_empty(), "un jugador quieto debería chocar o caer")
 	spawner.free()
 	player.free()
 
@@ -56,11 +71,17 @@ func _play(level_seed: int, bpm: float) -> String:
 	spawner.setup(_game, _difficulty, level_seed, bpm)
 	player.setup(_game, bpm)
 	player.moved.connect(spawner.on_player_moved)
+	player.ground_query = spawner.ground_height_at
+	spawner.ramp_hit.connect(player.launch_from_ramp)
 	var hit: Dictionary = {}
 	spawner.player_hit.connect(func(lane: int, kind: int) -> void:
 		if hit.is_empty():
 			hit["lane"] = lane
 			hit["kind"] = kind)
+	player.fell.connect(func() -> void:
+		if hit.is_empty():
+			hit["lane"] = player.lane
+			hit["kind"] = FELL_KIND)
 
 	# Plan: copia independiente del patrón para planificar la ruta completa.
 	var plan_pattern := LevelPattern.new(level_seed, bpm, _game, _difficulty)
@@ -81,8 +102,9 @@ func _play(level_seed: int, bpm: float) -> String:
 	var result: String = ""
 	while t < end_time and hit.is_empty():
 		player.on_tick(t)
-		# Avanzar a la siguiente fila una vez cruzada la actual.
-		while next_row < rows.size() and t > rows[next_row].time + half_occupancy:
+		# Avanzar a la siguiente fila una vez cruzada la actual (y terminado su tramo largo:
+		# plataforma recorrida, hueco pasado o vuelo de rampa aterrizado).
+		while next_row < rows.size() and t > rows[next_row].time + maxf(half_occupancy, rows[next_row].tail):
 			next_row += 1
 		if next_row < rows.size():
 			var target: int = plan[next_row]
@@ -90,7 +112,7 @@ func _play(level_seed: int, bpm: float) -> String:
 				player.request_lane_change(1 if target > player.lane else -1)
 				last_move_time = t
 			var row: LevelPattern.Row = rows[next_row]
-			if row.lanes[target] == LevelPattern.Kind.LOW and jumped_row != next_row \
+			if LevelPattern.needs_jump(row.lanes[target]) and jumped_row != next_row \
 					and t >= row.time - half_jump:
 				player.request_jump()
 				jumped_row = next_row
@@ -112,7 +134,7 @@ func _plan_lanes(p: LevelPattern) -> PackedInt32Array:
 	var mask: int = 1 << p.start_lane
 	var last_time: float = -INF
 	for row: LevelPattern.Row in rows:
-		var dt: float = row.time - last_time
+		var dt: float = row.time - row.head - last_time
 		var m: int = LevelPattern.max_moves(dt, p.time_per_move, p.occupancy_time, p.lane_count)
 		var can_jump: bool = dt >= p.jump_time + _difficulty.jump_margin
 		mask = LevelPattern.expand_mask(mask, m, p.lane_count) & LevelPattern.passable_mask(row.lanes, can_jump)
@@ -120,7 +142,7 @@ func _plan_lanes(p: LevelPattern) -> PackedInt32Array:
 			return PackedInt32Array()
 		reach.append(mask)
 		moves.append(m)
-		last_time = row.time
+		last_time = row.end_time()
 	var plan := PackedInt32Array()
 	plan.resize(rows.size())
 	var lane: int = _first_lane(reach[rows.size() - 1]) if rows.size() > 0 else 0

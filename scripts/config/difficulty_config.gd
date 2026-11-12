@@ -43,3 +43,20 @@ extends Resource
 @export_range(0.0, 1.0) var jump_gate_center_bias: float = 0.7
 ## Barrera baja en los tres carriles (saltar sin importar el carril).
 @export_range(0.0, 1.0) var full_low_probability: float = 0.06
+
+@export_group("Terreno y obstáculos avanzados")
+## De los bloqueos saltables: fracción que es hueco corto / abismo largo / plataforma elevada
+## (el resto son barreras bajas).
+@export_range(0.0, 1.0) var gap_probability: float = 0.0
+@export_range(0.0, 1.0) var long_gap_probability: float = 0.0
+@export_range(0.0, 1.0) var platform_probability: float = 0.0
+## De los muros: fracción que es muro móvil (baila entre dos carriles al ritmo).
+@export_range(0.0, 1.0) var mover_probability: float = 0.0
+## Fila especial: abismo en todos los carriles (saltar sí o sí).
+@export_range(0.0, 1.0) var full_gap_probability: float = 0.0
+## Fila especial: rampa de impulso obligatoria + línea de muros que se sobrevuela.
+@export_range(0.0, 1.0) var ramp_gate_probability: float = 0.0
+## Probabilidad por compás de un tramo sin rieles (salirse del borde = caer).
+@export_range(0.0, 1.0) var open_edge_probability: float = 0.0
+## Probabilidad de que una fila traiga una gema sobre el camino posible.
+@export_range(0.0, 1.0) var gem_probability: float = 0.0

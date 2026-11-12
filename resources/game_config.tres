@@ -4,3 +4,7 @@
 
 [resource]
 script = ExtResource("1")
+lane_count = 5
+obstacle_pool_size = 120
+camera_offset = Vector3(0, 6.2, 8.6)
+camera_look_ahead = 11.0

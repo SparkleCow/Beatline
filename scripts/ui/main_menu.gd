@@ -1,10 +1,11 @@
 class_name MainMenu
 extends Control
-## Menú principal Y2K: JUGAR, selector de nivel (hoy / días anteriores / aleatorio),
-## dificultad y opciones (volumen, datos de depuración). Se construye por código.
+## Menú principal Y2K: JUGAR, selector de nivel (hoy / días anteriores / aleatorio /
+## niveles fijos), dificultad y opciones (volumen, efectos, depuración). Por código.
 ## Solo emite señales; main.gd las conecta con el juego.
 
-signal play_requested(seed_value: int, difficulty: DifficultyConfig)
+## `goal_beats` > 0 = nivel fijo con meta; 0 = partida sin fin.
+signal play_requested(seed_value: int, difficulty: DifficultyConfig, goal_beats: int)
 signal settings_changed
 
 ## Cuántos días hacia atrás se pueden jugar.
@@ -18,6 +19,8 @@ const PLAY_HEIGHT: float = 170.0
 const BUTTON_HEIGHT: float = 120.0
 const ARROW_WIDTH: float = 120.0
 const TITLE_SIZE: int = 150
+const GIF_SIDE: float = 110.0
+const FIXED_DIFFICULTY_TEXT: String = "FIJA · DURA"
 const SUBTITLE_SIZE: int = 36
 const OPTIONS_TITLE_SIZE: int = 80
 const PLAY_FONT_SIZE: int = 80
@@ -43,12 +46,15 @@ var _level_label: Label
 var _difficulty_label: Label
 var _info_label: Label
 var _volume_slider: HSlider
+var _sfx_slider: HSlider
+var _stages: Array[LevelCatalog.Stage] = []
 var _debug_check: CheckButton
 
 
 func setup(settings: SettingsStore, difficulties: Array[DifficultyConfig]) -> void:
 	_settings = settings
 	_difficulties = difficulties
+	_stages = LevelCatalog.stages()
 	_settings.difficulty_index = clampi(_settings.difficulty_index, 0, _difficulties.size() - 1)
 	theme = NeonTheme.build()
 	set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -91,21 +97,29 @@ func _build() -> void:
 	_main_page.add_child(_title)
 	_main_page.add_child(NeonTheme.title_label("✦ un nivel nuevo cada día ✦", SUBTITLE_SIZE,
 			NeonPalette.CYAN, NeonPalette.PURPLE, 6))
+	_main_page.add_child(_gif_row())
 	_main_page.add_child(_spacer())
+
+	# Los controles viven dentro de una ventana retro.
+	var window: RetroWindow = RetroWindow.create("beatline.exe", NeonPalette.PINK)
+	window.mouse_filter = Control.MOUSE_FILTER_PASS
+	_main_page.add_child(window)
+	var panel: VBoxContainer = window.body
+	panel.add_theme_constant_override(&"separation", SPACING)
 
 	_play_button = _button("▶  JUGAR", PLAY_HEIGHT)
 	_play_button.add_theme_font_size_override(&"font_size", PLAY_FONT_SIZE)
 	_play_button.pressed.connect(_on_play)
-	_main_page.add_child(_play_button)
+	panel.add_child(_play_button)
 
-	_main_page.add_child(_caption("NIVEL"))
-	_level_label = _selector(_main_page, _on_level_step)
-	_main_page.add_child(_caption("DIFICULTAD"))
-	_difficulty_label = _selector(_main_page, _on_difficulty_step)
+	panel.add_child(_caption("NIVEL"))
+	_level_label = _selector(panel, _on_level_step)
+	panel.add_child(_caption("DIFICULTAD"))
+	_difficulty_label = _selector(panel, _on_difficulty_step)
 
 	var options_button: Button = _button("OPCIONES", BUTTON_HEIGHT)
 	options_button.pressed.connect(_show_options)
-	_main_page.add_child(options_button)
+	panel.add_child(options_button)
 	_main_page.add_child(_spacer())
 	_info_label = NeonTheme.title_label("", INFO_SIZE, NeonPalette.LIME, Color.BLACK, 4)
 	_main_page.add_child(_info_label)
@@ -122,6 +136,15 @@ func _build() -> void:
 	_volume_slider.value = _settings.volume
 	_volume_slider.value_changed.connect(_on_volume_changed)
 	_options_page.add_child(_volume_slider)
+	_options_page.add_child(_caption("EFECTOS"))
+	_sfx_slider = HSlider.new()
+	_sfx_slider.min_value = 0.0
+	_sfx_slider.max_value = 1.0
+	_sfx_slider.step = 0.05
+	_sfx_slider.custom_minimum_size = Vector2(0.0, BUTTON_HEIGHT * 0.6)
+	_sfx_slider.value = _settings.sfx_volume
+	_sfx_slider.value_changed.connect(_on_sfx_volume_changed)
+	_options_page.add_child(_sfx_slider)
 	_debug_check = CheckButton.new()
 	_debug_check.text = "Datos de depuración (F3)"
 	_debug_check.button_pressed = _settings.show_debug
@@ -143,6 +166,20 @@ func _page() -> VBoxContainer:
 	page.alignment = BoxContainer.ALIGNMENT_CENTER
 	page.add_theme_constant_override(&"separation", SPACING)
 	return page
+
+
+## Fila decorativa de "GIFs" Y2K. Cada uno se reemplaza con assets/sprites/menu_gif_N.png.
+func _gif_row() -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override(&"separation", SPACING * 2)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var kinds: Array[RetroGif.Kind] = [RetroGif.Kind.STAR, RetroGif.Kind.GLOBE, RetroGif.Kind.EQUALIZER]
+	var colors: Array[Color] = [NeonPalette.LIME, NeonPalette.CYAN, NeonPalette.PINK]
+	for i: int in kinds.size():
+		row.add_child(RetroGif.from_asset("menu_gif_%d" % (i + 1), kinds[i], GIF_SIDE,
+				colors[i], NeonPalette.PURPLE))
+	return row
 
 
 func _spacer() -> Control:
@@ -184,7 +221,22 @@ func _selector(parent: Container, on_step: Callable) -> Label:
 	return label
 
 
+## Los niveles fijos ocupan los índices más altos, en orden inverso: así ▶ desde HOY
+## recorre NIVEL 1, 2, 3... y ◀ sigue yendo hacia días anteriores.
+func _choice_count() -> int:
+	return LEVEL_RANDOM + 1 + _stages.size()
+
+
+func _selected_stage() -> LevelCatalog.Stage:
+	if _level_choice <= LEVEL_RANDOM:
+		return null
+	return _stages[_choice_count() - 1 - _level_choice]
+
+
 func _selected_seed() -> int:
+	var stage: LevelCatalog.Stage = _selected_stage()
+	if stage != null:
+		return stage.seed_value
 	if _level_choice == LEVEL_RANDOM:
 		return _random_seed
 	if _level_choice == 0:
@@ -193,6 +245,9 @@ func _selected_seed() -> int:
 
 
 func _level_text() -> String:
+	var stage: LevelCatalog.Stage = _selected_stage()
+	if stage != null:
+		return "%d · %s" % [_stages.find(stage) + 1, stage.title]
 	if _level_choice == LEVEL_RANDOM:
 		return "ALEATORIO"
 	var d: Dictionary = DailySeed.utc_date_days_ago(_level_choice)
@@ -206,22 +261,27 @@ func _level_text() -> String:
 
 func _refresh() -> void:
 	_level_label.text = _level_text()
-	_difficulty_label.text = _difficulties[_settings.difficulty_index].display_name.to_upper()
+	var stage: LevelCatalog.Stage = _selected_stage()
+	_difficulty_label.text = FIXED_DIFFICULTY_TEXT if stage != null \
+			else _difficulties[_settings.difficulty_index].display_name.to_upper()
 	var seed_value: int = _selected_seed()
-	var rng := RandomNumberGenerator.new()
-	rng.seed = DailySeed.derive(seed_value, DailySeed.SALT_MUSIC)
-	_selected_bpm = MusicGenerator.choose_bpm(rng, load("res://resources/music_config.tres") as MusicConfig)
-	_info_label.text = "♪ %d BPM  ·  semilla %d" % [_selected_bpm, seed_value]
+	_selected_bpm = GameManager.bpm_for_seed(seed_value, load("res://resources/music_config.tres") as MusicConfig)
+	if stage != null:
+		_info_label.text = "♪ %d BPM  ·  meta: %d compases" % [_selected_bpm, stage.goal_bars]
+	else:
+		_info_label.text = "♪ %d BPM  ·  semilla %d" % [_selected_bpm, seed_value]
 
 
 func _on_level_step(direction: int) -> void:
-	_level_choice = posmod(_level_choice - direction, LEVEL_RANDOM + 1)
+	_level_choice = posmod(_level_choice - direction, _choice_count())
 	if _level_choice == LEVEL_RANDOM:
 		_random_seed = randi()
 	_refresh()
 
 
 func _on_difficulty_step(direction: int) -> void:
+	if _selected_stage() != null:
+		return  # Los niveles fijos traen su propia dificultad.
 	_settings.difficulty_index = posmod(_settings.difficulty_index + direction, _difficulties.size())
 	settings_changed.emit()
 	_refresh()
@@ -229,7 +289,11 @@ func _on_difficulty_step(direction: int) -> void:
 
 func _on_play() -> void:
 	visible = false
-	play_requested.emit(_selected_seed(), _difficulties[_settings.difficulty_index])
+	var stage: LevelCatalog.Stage = _selected_stage()
+	if stage != null:
+		play_requested.emit(stage.seed_value, stage.difficulty, stage.goal_beats())
+	else:
+		play_requested.emit(_selected_seed(), _difficulties[_settings.difficulty_index], 0)
 
 
 func _show_options() -> void:
@@ -240,6 +304,11 @@ func _show_options() -> void:
 
 func _on_volume_changed(value: float) -> void:
 	_settings.volume = value
+	settings_changed.emit()
+
+
+func _on_sfx_volume_changed(value: float) -> void:
+	_settings.sfx_volume = value
 	settings_changed.emit()
 
 

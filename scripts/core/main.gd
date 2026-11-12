@@ -20,6 +20,8 @@ func _ready() -> void:
 	_game.run_started.connect(_hud.on_run_started)
 	_game.score_changed.connect(_hud.on_score_changed)
 	_game.run_ended.connect(_hud.on_run_ended)
+	_game.gems_changed.connect(_hud.on_gems_changed)
+	_game.goal_progress_changed.connect(_hud.on_goal_progress_changed)
 	_game.debug_stats_changed.connect(_hud.on_debug_stats_changed)
 	_game.debug_toggled.connect(_hud.on_debug_toggled)
 	_hud.retry_requested.connect(_game.retry)
@@ -29,9 +31,10 @@ func _ready() -> void:
 	_menu.setup(_settings, DIFFICULTIES)
 
 
-func _on_play_requested(seed_value: int, difficulty: DifficultyConfig) -> void:
+func _on_play_requested(seed_value: int, difficulty: DifficultyConfig, goal_beats: int) -> void:
 	_hud.set_in_game(true)
-	_game.begin(seed_value, difficulty)
+	_hud.set_goal_enabled(goal_beats > 0)
+	_game.begin(seed_value, difficulty, goal_beats)
 
 
 func _on_menu_requested() -> void:

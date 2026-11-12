@@ -3,12 +3,16 @@ extends Node
 ## Traduce toques/deslizamientos y teclado en señales de intención. No mueve nada.
 ##
 ## Táctil: deslizar izq/der = carril (se dispara durante el arrastre, sin esperar a soltar);
-##         deslizar arriba o toque corto = saltar.
-## PC: flechas / A-D para carril, Espacio / flecha arriba / W para saltar, F3 debug.
+##         toque corto = salto bajo; deslizar arriba y mantener el dedo = salto alto
+##         (soltar antes lo recorta).
+## PC: flechas / A-D para carril, Espacio / flecha arriba / W para saltar (mantener = más
+##     alto), F3 debug.
 ## El ratón emula toques (input_devices/pointing/emulate_touch_from_mouse).
 
 signal lane_change_requested(direction: int)
 signal jump_requested
+## Se soltó el botón/dedo de salto: el jugador recorta el salto (altura variable).
+signal jump_released
 signal debug_toggled
 
 const ACTION_LEFT: StringName = &"move_left"
@@ -29,6 +33,8 @@ var _touch_origin: Vector2 = Vector2.ZERO
 var _touch_start_pos: Vector2 = Vector2.ZERO
 var _touch_start_msec: int = 0
 var _swiped: bool = false
+## El dedo que inició un salto deslizando hacia arriba sigue apoyado.
+var _jump_held: bool = false
 
 
 func _ready() -> void:
@@ -54,6 +60,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		lane_change_requested.emit(1)
 	elif event.is_action_pressed(ACTION_JUMP):
 		jump_requested.emit()
+	elif event.is_action_released(ACTION_JUMP):
+		jump_released.emit()
 	elif event.is_action_pressed(ACTION_DEBUG):
 		debug_toggled.emit()
 
@@ -67,16 +75,22 @@ func _handle_touch(touch: InputEventScreenTouch) -> void:
 		_touch_start_pos = touch.position
 		_touch_start_msec = Time.get_ticks_msec()
 		_swiped = false
+		_jump_held = false
 		return
 	if touch.index != _touch_index:
 		return
 	_touch_index = NO_TOUCH
+	if _jump_held:
+		_jump_held = false
+		jump_released.emit()
 	if _swiped:
 		return
 	var moved: float = touch.position.distance_to(_touch_start_pos)
 	var duration: int = Time.get_ticks_msec() - _touch_start_msec
 	if moved <= _screen_width() * TAP_MAX_FRACTION and duration <= TAP_MAX_MSEC:
+		# Toque: salto que se suelta al instante = salto bajo.
 		jump_requested.emit()
+		jump_released.emit()
 
 
 func _handle_drag(drag: InputEventScreenDrag) -> void:
@@ -89,7 +103,9 @@ func _handle_drag(drag: InputEventScreenDrag) -> void:
 		_swiped = true
 		_touch_origin = drag.position  # Re-armar: seguir arrastrando cambia otro carril.
 	elif -delta.y >= threshold and -delta.y > absf(delta.x):
-		jump_requested.emit()
+		if not _jump_held:
+			jump_requested.emit()
+			_jump_held = true
 		_swiped = true
 		_touch_origin = drag.position
 

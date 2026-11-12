@@ -20,10 +20,19 @@ const GROUND_SIZE: Vector2 = Vector2(220.0, 200.0)
 const GROUND_DEPTH: float = 0.35
 ## Distancia hacia adelante del centro del suelo fijo.
 const GROUND_FORWARD: float = 70.0
+## Marcas de peligro (tramo sin riel): franja naranja discontinua en el borde.
+const HAZARD_SIZE: Vector3 = Vector3(0.22, 0.05, 1.4)
+const HAZARD_PER_SEGMENT: int = 3
+const HAZARD_GLOW: float = 3.2
 
 var _game: GameConfig
 var _speed: float = 14.0
 var _segments: Array[Node3D] = []
+## Por segmento: grupo de rieles y grupo de marcas de peligro (se alternan).
+var _rails: Array[Node3D] = []
+var _hazards: Array[Node3D] = []
+## (beat: float) -> bool. True si en ese beat la pista no tiene rieles. Lo cablea GameManager.
+var open_edge_query: Callable = Callable()
 
 
 func setup(game: GameConfig, bpm: float) -> void:
@@ -41,7 +50,14 @@ func on_tick(song_time: float) -> void:
 	var offset: float = fposmod(song_time * _speed, period)
 	for i: int in _segments.size():
 		var slot: int = i - SEGMENTS_BEHIND * STRIPE_PERIOD
-		_segments[i].position.z = -float(slot) * _game.segment_length + offset
+		var z: float = -float(slot) * _game.segment_length + offset
+		_segments[i].position.z = z
+		var open: bool = false
+		if open_edge_query.is_valid():
+			# Beat del nivel que corresponde al centro de este segmento.
+			open = bool(open_edge_query.call((song_time * _speed - z) / _game.units_per_beat))
+		_rails[i].visible = not open
+		_hazards[i].visible = open
 
 
 func _build_segments() -> void:
@@ -62,6 +78,9 @@ func _build_segments() -> void:
 	var beam_mesh := BoxMesh.new()
 	beam_mesh.size = Vector3(arch_half * 2.0 + ARCH_THICKNESS, ARCH_THICKNESS, ARCH_THICKNESS)
 	var rail_mat: ShaderMaterial = NeonPalette.solid_material(NeonPalette.CYAN, RAIL_GLOW)
+	var hazard_mesh := BoxMesh.new()
+	hazard_mesh.size = HAZARD_SIZE
+	var hazard_mat: ShaderMaterial = NeonPalette.solid_material(NeonPalette.ORANGE, HAZARD_GLOW)
 	var arch_mats: Array[ShaderMaterial] = [
 		NeonPalette.solid_material(NeonPalette.PINK, ARCH_GLOW),
 		NeonPalette.solid_material(NeonPalette.PURPLE, ARCH_GLOW),
@@ -72,13 +91,26 @@ func _build_segments() -> void:
 		var segment := Node3D.new()
 		segment.name = "Segment%d" % i
 		_add_mesh(segment, floor_mesh, grid, Vector3(0.0, -_game.floor_thickness * 0.5, 0.0))
+		var rails := Node3D.new()
+		rails.name = "Rails"
+		segment.add_child(rails)
+		var hazards := Node3D.new()
+		hazards.name = "Hazards"
+		hazards.visible = false
+		segment.add_child(hazards)
 		for side: float in [-1.0, 1.0]:
-			_add_mesh(segment, rail_mesh, rail_mat, Vector3(side * width * 0.5, RAIL_SIZE.y * 0.5, 0.0))
+			_add_mesh(rails, rail_mesh, rail_mat, Vector3(side * width * 0.5, RAIL_SIZE.y * 0.5, 0.0))
+			for h: int in HAZARD_PER_SEGMENT:
+				var hz: float = (float(h) + 0.5) / float(HAZARD_PER_SEGMENT) * length - length * 0.5
+				_add_mesh(hazards, hazard_mesh, hazard_mat,
+						Vector3(side * (width * 0.5 - HAZARD_SIZE.x * 0.5), HAZARD_SIZE.y * 0.5, hz))
 			_add_mesh(segment, post_mesh, arch_mats[i % STRIPE_PERIOD],
 					Vector3(side * arch_half, ARCH_HEIGHT * 0.5, -length * 0.5))
 		_add_mesh(segment, beam_mesh, arch_mats[i % STRIPE_PERIOD], Vector3(0.0, ARCH_HEIGHT, -length * 0.5))
 		add_child(segment)
 		_segments.append(segment)
+		_rails.append(rails)
+		_hazards.append(hazards)
 
 
 func _build_ground() -> void:

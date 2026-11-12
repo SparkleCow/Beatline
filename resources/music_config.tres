@@ -4,3 +4,6 @@
 
 [resource]
 script = ExtResource("1")
+drive = 2.1
+bass_gallop_probability = 0.7
+extra_kick_probability = 0.6
